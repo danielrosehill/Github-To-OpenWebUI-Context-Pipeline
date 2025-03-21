@@ -1,0 +1,47 @@
+name: Sync Knowledge to OpenWebUI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'context-data/**'
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests requests-toolbelt
+
+      - name: Create config file
+        run: |
+          # Print environment variables for debugging (without revealing secrets)
+          echo "OWUI_BASE_URL is set: ${{ secrets.OWUI_BASE_URL != '' }}"
+          echo "OWUI_API_KEY is set: ${{ secrets.OWUI_API_KEY != '' }}"
+          echo "OWUI_JWT_TOKEN is set: ${{ secrets.OWUI_JWT_TOKEN != '' }}"
+          echo "CF_ACCESS_CLIENT_ID is set: ${{ secrets.CF_ACCESS_CLIENT_ID != '' }}"
+          echo "CF_ACCESS_CLIENT_SECRET is set: ${{ secrets.CF_ACCESS_CLIENT_SECRET != '' }}"
+          
+          # Create config file from template
+          python code/create_config.py
+        env:
+          OWUI_BASE_URL: ${{ secrets.OWUI_BASE_URL }}
+          OWUI_API_KEY: ${{ secrets.OWUI_API_KEY }}
+          OWUI_JWT_TOKEN: ${{ secrets.OWUI_JWT_TOKEN }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+
+      - name: Run sync script
+        run: python code/src/sync_knowledge.py --base-dir context-data --config config.json --verbose
